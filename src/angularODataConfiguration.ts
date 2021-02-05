@@ -1,6 +1,7 @@
 import { HttpHeaders, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 
+import { ODataMetadataResult } from './angularODataMetadataResult';
 import { ODataPagedResult } from './angularODataPagedResult';
 import { IODataResponseModel } from './angularODataResponseModel';
 import { ODataUtils } from './angularODataUtils';
@@ -16,6 +17,9 @@ export class KeyConfigs {
     public apply = '$apply';
     public count = '$count';
     public maxPerPage = 'odata.maxpagesize';
+    public metadata = 'odata.metadata';
+    public responseCount = '@odata.count';
+    public responseNextLink = '@odata.nextLink';
 }
 
 @Injectable()
@@ -99,11 +103,14 @@ export class ODataConfiguration {
         }
 
         const body: any = res.body;
-        const entities: T[] = body.value;
+        let entities: T[] = body.value;
+        if(!Array.isArray(entities)){
+          entities = [];
+        }
 
         pagedResult.data = entities;
 
-        const parseResult = ODataUtils.tryParseInt(body['@odata.count']);
+        const parseResult = ODataUtils.tryParseInt(body[`${this.keys.responseCount}`]);
         if (parseResult.valid) {
             pagedResult.count = parseResult.value;
         } else {
@@ -111,11 +118,41 @@ export class ODataConfiguration {
             pagedResult.count = entities.length;
         }
 
-        if (body['@odata.nextLink']) {
-            pagedResult.nextLink = body['@odata.nextLink'];
+        if (body[`${this.keys.responseNextLink}`]) {
+            pagedResult.nextLink = body[`${this.keys.responseNextLink}`];
         }
 
         return pagedResult;
+    }
+
+    public extractQueryResultDataWithMetadata<T>(res: HttpResponse<IODataResponseModel<T>>): ODataMetadataResult<T> {
+      const result: ODataMetadataResult<T> = new ODataMetadataResult<T>();
+
+      if (res.status < 200 || res.status >= 300) {
+          throw new Error('Bad response status: ' + res.status);
+      }
+
+      const body: any = res.body;
+      let entities: T[] = body.value;
+      if(!Array.isArray(entities)){
+        entities = [];
+      }
+      result.fillMetadata(body);
+      result.data = entities;
+
+      const parseResult = ODataUtils.tryParseInt(body[`${this.keys.responseCount}`]);
+      if (parseResult.valid) {
+          result.count = parseResult.value;
+      } else {
+          console.warn('Cannot determine OData entities count. Falling back to collection length.');
+          result.count = entities.length;
+      }
+
+      if (body[`${this.keys.responseNextLink}`]) {
+          result.nextLink = body[`${this.keys.responseNextLink}`];
+      }
+
+      return result;
     }
 
     private sanitizeTypeName(typeName: string): string {

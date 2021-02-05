@@ -6,6 +6,7 @@ import { IKeyValue } from 'linq-collections';
 
 import { ODataConfiguration } from './angularODataConfiguration';
 import { ODataExecReturnType } from './angularODataEnums';
+import { ODataMetadataResult } from './angularODataMetadataResult';
 import { ODataOperation } from './angularODataOperation';
 import { ODataPagedResult } from './angularODataPagedResult';
 import { IODataResponseModel } from './angularODataResponseModel';
@@ -21,6 +22,7 @@ export class ODataQuery<T> extends ODataOperation<T> {
     private _entitiesUri: string;
     private _maxPerPage: number;
     private _customQueryOptions: IKeyValue<string, any>[] = [];
+    private _customQueryHeaders: IKeyValue<string, any>[] = [];
 
     constructor(typeName: string, config: ODataConfiguration, http: HttpClient) {
         super(typeName, config, http);
@@ -84,13 +86,20 @@ export class ODataQuery<T> extends ODataOperation<T> {
         return this;
     }
 
+    public CustomQueryHeaders(customHeaders: IKeyValue<string, any> | IKeyValue<string, any>[]): ODataQuery<T> {
+      if (customHeaders) {
+          this._customQueryHeaders = Array.isArray(customHeaders) ? customHeaders : [customHeaders];
+      }
+      return this;
+    }
+
     public GetUrl(returnType?: ODataExecReturnType): string {
         let url: string = this._entitiesUri;
         if (returnType === ODataExecReturnType.Count) {
             url = `${url}/${this.config.keys.count}`;
         }
 
-        const params: HttpParams = this.getQueryParams(returnType === ODataExecReturnType.PagedResult);
+        const params: HttpParams = this.getQueryParams();
         if (params.keys().length > 0) {
             return `${url}?${params}`;
         }
@@ -101,7 +110,8 @@ export class ODataQuery<T> extends ODataOperation<T> {
     public Exec(): Observable<T[]>;
     public Exec(returnType: ODataExecReturnType.Count): Observable<number>;
     public Exec(returnType: ODataExecReturnType.PagedResult): Observable<ODataPagedResult<T>>;
-    public Exec(returnType?: ODataExecReturnType): Observable<T[] | ODataPagedResult<T> | number> {
+    public Exec(returnType: ODataExecReturnType.MetadataResult): Observable<ODataMetadataResult<T>>;
+    public Exec(returnType?: ODataExecReturnType): Observable<T[] | ODataPagedResult<T> | ODataMetadataResult<T> | number> {
         const requestOptions: {
             headers?: HttpHeaders;
             observe: 'response';
@@ -109,14 +119,16 @@ export class ODataQuery<T> extends ODataOperation<T> {
             reportProgress?: boolean;
             responseType?: 'json';
             withCredentials?: boolean;
-        } = this.getQueryRequestOptions(returnType === ODataExecReturnType.PagedResult);
-
+        } = this.getQueryRequestOptions(returnType);
         switch (returnType) {
             case ODataExecReturnType.Count:
                 return this.execGetCount(requestOptions);
 
             case ODataExecReturnType.PagedResult:
                 return this.execGetArrayDataWithCount(this._entitiesUri, requestOptions);
+
+            case ODataExecReturnType.MetadataResult:
+                return this.execGetArrayDataWithMetadata(this._entitiesUri, requestOptions);
 
             default:
                 return this.execGetArrayData(requestOptions);
@@ -135,7 +147,7 @@ export class ODataQuery<T> extends ODataOperation<T> {
             reportProgress?: boolean;
             responseType?: 'json';
             withCredentials?: boolean;
-        } = this.getQueryRequestOptions(false);
+        } = this.getQueryRequestOptions(ODataExecReturnType.PagedResult);
 
         return this.execGetArrayDataWithCount(pagedResult.nextLink, requestOptions);
     }
@@ -181,6 +193,26 @@ export class ODataQuery<T> extends ODataOperation<T> {
             );
     }
 
+    private execGetArrayDataWithMetadata(url: string, requestOptions: {
+      headers?: HttpHeaders;
+      observe: 'response';
+      params?: HttpParams;
+      reportProgress?: boolean;
+      responseType?: 'json';
+      withCredentials?: boolean;
+    }): Observable<ODataMetadataResult<T>> {
+      return this.http.get<IODataResponseModel<T>>(url, requestOptions)
+          .pipe(
+              map(res => this.extractArrayDataWithMetadata(res, this.config)),
+              catchError((err: any, caught: Observable<ODataMetadataResult<T>>) => {
+                  if (this.config.handleError) {
+                      this.config.handleError(err, caught);
+                  }
+                  return throwError(err);
+              })
+          );
+    }
+
     private execGetArrayData(requestOptions: {
         headers?: HttpHeaders;
         observe: 'response';
@@ -201,7 +233,7 @@ export class ODataQuery<T> extends ODataOperation<T> {
             );
     }
 
-    private getQueryRequestOptions(odata4: boolean): {
+    private getQueryRequestOptions(returnType? : ODataExecReturnType): {
         headers?: HttpHeaders;
         observe: 'response';
         params?: HttpParams;
@@ -210,19 +242,28 @@ export class ODataQuery<T> extends ODataOperation<T> {
         withCredentials?: boolean;
     } {
         const options = Object.assign({}, this.config.defaultRequestOptions);
-        options.params = this.getQueryParams(odata4);
-
-        if (this._maxPerPage > 0) {
-            if (!options.headers) {
-                options.headers = new HttpHeaders();
-            }
-            options.headers = options.headers.set('Prefer', `${this.config.keys.maxPerPage}=${this._maxPerPage}`);
-        }
-
+        options.params = this.getQueryParams();
+        options.headers = this.getQueryHeaders(options.headers, returnType);
         return options;
     }
 
-    private getQueryParams(odata4: boolean): HttpParams {
+    private getQueryHeaders(headers: HttpHeaders, returnType?: ODataExecReturnType): HttpHeaders {
+      if (!headers) {
+        headers = new HttpHeaders();
+      }
+      if(this._maxPerPage > 0){
+        headers = headers.set('Prefer', `${this.config.keys.maxPerPage}=${this._maxPerPage}`);
+      }
+      headers = headers.set(`${this.config.keys.metadata}`, `${(returnType && returnType >= ODataExecReturnType.PagedResult)? 'full' : 'none'}`);
+      if (this._customQueryHeaders.length > 0) {
+        this._customQueryHeaders.forEach(customQueryHeader => {
+          headers = headers.set(customQueryHeader.key, customQueryHeader.value);
+        });
+      }
+      return headers;
+    }
+
+    private getQueryParams(): HttpParams {
         let params = super.getParams();
 
         if (this._filter) {
@@ -255,10 +296,6 @@ export class ODataQuery<T> extends ODataOperation<T> {
             ));
         }
 
-        if (odata4) {
-            params = params.append('$count', 'true'); // OData v4 only
-        }
-
         return params;
     }
 
@@ -272,6 +309,10 @@ export class ODataQuery<T> extends ODataOperation<T> {
 
     private extractArrayDataWithCount(res: HttpResponse<IODataResponseModel<T>>, config: ODataConfiguration): ODataPagedResult<T> {
         return config.extractQueryResultDataWithCount(res);
+    }
+
+    private extractArrayDataWithMetadata(res: HttpResponse<IODataResponseModel<T>>, config: ODataConfiguration): ODataMetadataResult<T> {
+      return config.extractQueryResultDataWithMetadata(res);
     }
 
     private checkReservedCustomQueryOptionKey(key: string): string {

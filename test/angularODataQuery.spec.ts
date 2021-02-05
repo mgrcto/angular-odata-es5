@@ -7,7 +7,7 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { inject, TestBed } from '@angular/core/testing';
 
 import { AngularODataModule, ODataExecReturnType } from '../src';
-import { ODataConfiguration, ODataPagedResult, ODataQuery, ODataServiceFactory } from './../src/index';
+import { ODataConfiguration, ODataMetadataResult, ODataPagedResult, ODataQuery, ODataServiceFactory } from './../src/index';
 import { IEmployee } from './helpers/employee';
 import { HttpHeadersMatcher } from './helpers/httpHeadersMatcher';
 import { HttpOptionsMatcher } from './helpers/httpOptionsMatcher';
@@ -18,6 +18,7 @@ export class ODataQueryMock extends ODataQuery<IEmployee> {
     public Exec(): Observable<IEmployee[]>;
     public Exec(returnType: ODataExecReturnType.Count): Observable<number>;
     public Exec(returnType: ODataExecReturnType.PagedResult): Observable<ODataPagedResult<IEmployee>>;
+    public Exec(returnType: ODataExecReturnType.MetadataResult): Observable<ODataMetadataResult<IEmployee>>;
     public Exec(returnType?: ODataExecReturnType): Observable<IEmployee[] | ODataPagedResult<IEmployee> | number> {
         switch (returnType) {
             case ODataExecReturnType.Count:
@@ -157,7 +158,7 @@ describe('ODataQuery', () => {
             reportProgress?: boolean;
             responseType?: 'json';
             withCredentials?: boolean;
-        } = { headers: testHeaders, params: params, observe: 'response' };
+        } = { headers: testHeaders.set('odata.metadata', 'none'), params: params, observe: 'response' };
 
         assert.isNotNull(result);
         expect(http.get).toHaveBeenCalledWith('http://localhost/odata/Employees', testOptions);
@@ -205,7 +206,7 @@ describe('ODataQuery', () => {
             reportProgress?: boolean;
             responseType?: 'json';
             withCredentials?: boolean;
-        } = { headers: testHeaders, params: params, observe: 'response' };
+        } = { headers: testHeaders.set('odata.metadata', 'none'), params: params, observe: 'response' };
 
         assert.isNotNull(result);
         expect(http.get).toHaveBeenCalledWith('http://localhost/odata/Employees/$count', testOptions);
@@ -234,8 +235,7 @@ describe('ODataQuery', () => {
             .append(config.keys.filter, 'x')
             .append(config.keys.top, '10')
             .append(config.keys.skip, '20')
-            .append(config.keys.orderBy, 'y')
-            .append('$count', 'true');
+            .append(config.keys.orderBy, 'y');
 
         // Assert
         const testOptions: {
@@ -245,7 +245,7 @@ describe('ODataQuery', () => {
             reportProgress?: boolean;
             responseType?: 'json';
             withCredentials?: boolean;
-        } = { headers: testHeaders, params: params, observe: 'response' };
+        } = { headers: testHeaders.set('odata.metadata', 'full'), params: params, observe: 'response' };
 
         assert.isNotNull(result);
         expect(http.get).toHaveBeenCalledWith('http://localhost/odata/Employees', testOptions);
@@ -273,12 +273,12 @@ describe('ODataQuery', () => {
         // Assert
         const params = new HttpParams()
             .append(config.keys.filter, 'x')
-            .append(config.keys.orderBy, 'y')
-            .append('$count', 'true');
+            .append(config.keys.orderBy, 'y');
 
         const outputHeaders = {
             'a': 'b',
-            'Prefer': 'odata.maxpagesize=3'
+            'Prefer': 'odata.maxpagesize=3',
+            'odata.metadata': 'full'
         };
 
         const optionsMatcher = new HttpOptionsMatcher(params, new HttpHeadersMatcher(outputHeaders));

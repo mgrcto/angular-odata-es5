@@ -6,7 +6,7 @@ import { ODataConfiguration, ODataExecReturnType, ODataPagedResult, ODataQuery, 
 import { IEmployee } from '../test/helpers/employee';
 import { NorthwindODataConfigurationFactory } from './NorthwindODataConfigurationFactory';
 
-console.log('`EmployeeGridODataComponent` component loaded asynchronously');
+console.log('EmployeeGridODataComponent component loaded asynchronously');
 
 @Component({
     templateUrl: './employeeGridOData.component.html',
@@ -140,6 +140,7 @@ export class EmployeeGridODataComponent implements OnInit {
         this.query
             .Exec(ODataExecReturnType.PagedResult)
             .subscribe((pagedResult: ODataPagedResult<IEmployee>) => {
+                console.log(pagedResult.data);
                 this.employees = pagedResult.data;
                 this.totalRecords = pagedResult.count;
             }, (error) => {
@@ -163,5 +164,7 @@ export class EmployeeGridODataComponent implements OnInit {
                 this.count = 0;
                 console.log('ODataExecReturnType.Count ERROR ' + error);
             });
+        console.log('Count Query');
+        console.log(this.query);
     }
 }

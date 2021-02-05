@@ -4,6 +4,7 @@ import * as webpack from 'webpack';
 const angularExternals = require('webpack-angular-externals');
 const rxjsExternals = require('webpack-rxjs-externals');
 const pkg = require('./package.json');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
 export default {
   entry: {
@@ -38,11 +39,27 @@ export default {
   resolve: {
     extensions: ['.ts', '.js']
   },
+  optimization:{
+    minimizer: [
+      // we specify a custom UglifyJsPlugin here to get source maps in production
+      new UglifyJsPlugin({
+        cache: true,
+        include: /\.min\.js$/,
+        parallel: true,
+        uglifyOptions: {
+          compress: false,
+          ecma: 6,
+          mangle: true
+        },
+        sourceMap: true
+      })
+    ]
+  },
   plugins: [
-    new webpack.optimize.UglifyJsPlugin({
-      include: /\.min\.js$/,
-      sourceMap: true
-    }),
+    //new webpack.optimize.UglifyJsPlugin({
+      //include: /\.min\.js$/,
+      //sourceMap: true
+    //}),
     new webpack.ContextReplacementPlugin(
       /angular(\\|\/)core(\\|\/)@angular/,
       path.join(__dirname, 'src')

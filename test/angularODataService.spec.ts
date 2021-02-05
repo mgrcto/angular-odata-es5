@@ -379,7 +379,7 @@ describe('ODataService', () => {
             reportProgress?: boolean;
             responseType?: 'json';
             withCredentials?: boolean;
-        } = { headers: new HttpHeaders(), params: params, observe: 'response' };
+        } = { headers: new HttpHeaders().set('odata.metadata', 'none'), params: params, observe: 'response' };
 
         assert.equal(url, `http://localhost/odata/Employees?$top=100`);
         assert.isNotNull(result);
@@ -405,7 +405,7 @@ describe('ODataService', () => {
             reportProgress?: boolean;
             responseType?: 'json';
             withCredentials?: boolean;
-        } = { headers: new HttpHeaders(), params: new HttpParams().append(config.keys.top, '100'), observe: 'response' };
+        } = { headers: new HttpHeaders().set('odata.metadata', 'none'), params: new HttpParams().append(config.keys.top, '100'), observe: 'response' };
 
         assert.isNotNull(result1);
         expect(http.get).toHaveBeenCalledWith(`http://localhost/odata/Employees`, getOptions);

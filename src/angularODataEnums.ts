@@ -5,5 +5,7 @@ export enum ODataExecReturnType {
 
     Count = 1,
 
-    PagedResult = 2
+    PagedResult = 2,
+
+    MetadataResult = 3
 }
