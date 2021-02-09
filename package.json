@@ -1,5 +1,5 @@
 {
-  "name": "angular-odata4.01-es5",
+  "name": "angular-odata4_01-es5",
   "version": "0.1.0",
   "description": "OData 4.01 service for Angular (es5 version)",
   "main": "./bundles/angular-odata-es5.umd.js",
@@ -31,7 +31,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mgrcto/angular-odata4.01-es5.git"
+    "url": "git+https://github.com/mgrcto/angular-odata4_01-es5.git"
   },
   "keywords": [
     "odata",
@@ -44,9 +44,9 @@
   "author": "mgrcto",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/StefH/angular-odata-es5/issues"
+    "url": "https://github.com/mgrcto/angular-odata4_01-es5/issues"
   },
-  "homepage": "https://github.com/mgrcto/angular-odata4.01-es5#readme",
+  "homepage": "https://github.com/mgrcto/angular-odata4_01-es5#readme",
   "devDependencies": {
     "@angular/animations": ">=8.0.0 <11.0.0",
     "@angular/common": ">=8.0.0 <11.0.0",
