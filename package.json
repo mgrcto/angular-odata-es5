@@ -1,6 +1,6 @@
 {
   "name": "angular-odata-v4_01",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OData 4.01 service for Angular (es5 version)",
   "main": "./bundles/angular-odata-es5.umd.js",
   "module": "./index.js",
@@ -100,6 +100,7 @@
     "sinon-chai": "^2.8.0",
     "standard-version": "^4.4.0",
     "ts-node": "^3.0.2",
+    "tslib": "^1.14.1",
     "tslint": "^5.11.0",
     "tslint-consistent-codestyle": "^1.14.1",
     "tslint-loader": "^3.5.4",
@@ -125,8 +126,7 @@
     }
   },
   "dependencies": {
-    "linq-collections": "^1.0.254",
-    "tslib": "^1.14.1"
+    "linq-collections": "^1.0.254"
   },
   "directories": {
     "doc": "docs",
